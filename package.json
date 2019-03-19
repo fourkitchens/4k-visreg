@@ -1,0 +1,26 @@
+{
+  "name": "4k-visreg",
+  "version": "1.0.0",
+  "description": "Visual regression demo.",
+  "main": "index.js",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "visreg-test": "percy exec -- nightwatch"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fourkitchens/4k-drupalcon-2019.git"
+  },
+  "author": "",
+  "license": "MIT",
+  "homepage": "https://github.com/fourkitchens/4k-visreg#readme",
+  "dependencies": {
+    "@percy/agent": "^0.1.14",
+    "@percy/nightwatch": "^1.0.2",
+    "chromedriver": "^2.46.0",
+    "nightwatch": "^1.0.19"
+  },
+  "devDependencies": {}
+}

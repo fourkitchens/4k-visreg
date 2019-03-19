@@ -36,105 +36,137 @@ defaults: &defaults
     # BUILD_TOOLS_VERSION: ^2.0.0-alpha4
     TERM: dumb
 
-version: 2
+version: 2.1
+
+orbs:
+  percy: percy/agent@volatile
+
 jobs:
-    # @todo: common initialization: 'composer install' for the site-under-test
-    build:
-        <<: *defaults
-        steps:
-            - checkout
+  # @todo: common initialization: 'composer install' for the site-under-test
+  build:
+    <<: *defaults
+    steps:
+      - checkout
 
-            - restore_cache:
-                keys:
-                    - composer-cache
-                    - terminus-install
+      - restore_cache:
+          keys:
+            - composer-cache
+            - terminus-install
 
-            - run:
-                # Set TERMINUS_ENV and related environment variables.
-                # https://github.com/pantheon-systems/docker-build-tools-ci/blob/1.x/scripts/set-environment
-                name: environment
-                command: /build-tools-ci/scripts/set-environment
+      - run:
+          # Set TERMINUS_ENV and related environment variables.
+          # https://github.com/pantheon-systems/docker-build-tools-ci/blob/1.x/scripts/set-environment
+          name: environment
+          command: /build-tools-ci/scripts/set-environment
 
-            - run:
-                name: run composer install to get the vendor directory
-                command: composer install
+      - run:
+          name: run composer install to get the vendor directory
+          command: composer install
 
-            - save_cache:
-                key: composer-cache
-                paths:
-                    - $HOME/.composer/cache
+      - save_cache:
+          key: composer-cache
+          paths:
+            - $HOME/.composer/cache
 
-            - save_cache:
-                key: terminus-install
-                paths:
-                    - $(TERMINUS_PLUGINS_DIR:-~/.terminus/plugins)
+      - save_cache:
+          key: terminus-install
+          paths:
+            - $(TERMINUS_PLUGINS_DIR:-~/.terminus/plugins)
 
-            - run:
-                name: lint php code for syntax errors
-                command: composer -n lint
+      - run:
+          name: lint php code for syntax errors
+          command: composer -n lint
 
-            - run:
-                name: check coding standards
-                command: composer -n code-sniff
+      - run:
+          name: check coding standards
+          command: composer -n code-sniff
 
-            - run:
-                name: run unit tests
-                command: composer -n unit-test
+      - run:
+          name: run unit tests
+          command: composer -n unit-test
 
-    build_deploy_and_test:
-        <<: *defaults
-        steps:
-            - checkout
+  build_and_deploy:
+    <<: *defaults
+    steps:
+      - checkout
 
-            - restore_cache:
-                keys:
-                    - composer-cache
-                    - terminus-install
+      - restore_cache:
+          keys:
+            - composer-cache
+            - terminus-install
 
-            - run:
-                # Set TERMINUS_ENV and related environment variables.
-                # https://github.com/pantheon-systems/docker-build-tools-ci/blob/1.x/scripts/set-environment
-                name: dependencies
-                command: /build-tools-ci/scripts/set-environment
+      - run:
+          # Set TERMINUS_ENV and related environment variables.
+          # https://github.com/pantheon-systems/docker-build-tools-ci/blob/1.x/scripts/set-environment
+          name: dependencies
+          command: /build-tools-ci/scripts/set-environment
 
-            - run:
-                name: install dev dependencies, build assets, etc.
-                command: ./.circleci/scripts/pantheon/01-prepare
+      - run:
+          name: install dev dependencies, build assets, etc.
+          command: ./.circleci/scripts/pantheon/01-prepare
 
-            - run:
-                name: build assets
-                command: composer -n build-assets
+      - run:
+          name: build assets
+          command: composer -n build-assets
 
-            - run:
-                name: prepare database for site-under test
-                command: ./.circleci/scripts/pantheon/02-init-site-under-test-clone-existing
-                # command: ./.circleci/scripts/pantheon/02-init-site-under-test-reinstall-new
+      - run:
+          name: prepare database for site-under test
+          command: ./.circleci/scripts/pantheon/02-init-site-under-test-clone-existing
+          # command: ./.circleci/scripts/pantheon/02-init-site-under-test-reinstall-new
 
-            - run:
-                name: run composer install again to get dev dependencies
-                command: composer install
+      - run:
+          name: run composer install again to get dev dependencies
+          command: composer install
 
-            - run:
-                name: run functional tests with Behat
-                command: ./tests/scripts/run-behat
+      - run:
+          name: handle merge to master (if needed)
+          command: ./.circleci/scripts/pantheon/04-merge-master
 
-            - run:
-                name: post-test actions
-                command: ./.circleci/scripts/pantheon/03-post-test
+      - run:
+          name: remove transient test fixtures
+          command: ./.circleci/scripts/pantheon/09-cleanup-fixtures
 
-            - run:
-                name: handle merge to master (if needed)
-                command: ./.circleci/scripts/pantheon/04-merge-master
+  visreg_test:
+    docker:
+      - image: circleci/node:10-browsers
 
-            - run:
-                name: remove transient test fixtures
-                command: ./.circleci/scripts/pantheon/09-cleanup-fixtures
+    steps:
+      - checkout
+
+      - restore_cache:
+          keys:
+            - node-dependencies-{{ checksum "package.json" }}
+            # fallback to using the latest cache if no exact match is found
+            - node-dependencies-
+
+      - run: npm install
+
+      - save_cache:
+          paths:
+            - node_modules
+          key: node-dependencies-{{ checksum "package.json" }}
+
+      - run:
+          name: Set additional environment variables
+          command: ./.circleci/scripts/custom/visreg-set-environment
+
+      - run:
+          name: Run visual regression tests
+          command: npm visreg-test
 
 workflows:
-  version: 2
-  build_and_test:
+  build_and_deploy:
     jobs:
       # Install dev dependencies and do simple tests (sniff, unit tests, etc.)
       - build
-      # Build deploy and test on target platform
-      - build_deploy_and_test
+      # Build and deploy
+      - build_deploy
+      # Run visual regression tests
+      - visreg_test:
+          requires:
+            - build_deploy
+      # Finalize Percy visual regression testing
+      - percy/finalize_all:
+          requires:
+            - visreg_test
+
