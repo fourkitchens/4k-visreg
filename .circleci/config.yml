@@ -149,6 +149,14 @@ jobs:
           command: ./.circleci/scripts/custom/visreg-set-environment
 
       - run:
+          name: Run npm version
+          command: npm version
+
+      - run:
+          name: Test npm custom command
+          command: npm test
+
+      - run:
           name: Run visual regression tests
           command: npm visreg-test
 
