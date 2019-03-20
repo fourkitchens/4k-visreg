@@ -1,0 +1,6 @@
+name: 4-k-visreg
+recipe: pantheon
+config:
+  framework: drupal8
+  site: 4k-visreg
+  id: 9f59a79f-0b1e-4958-93bc-d6fecf91f743
