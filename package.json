@@ -7,8 +7,7 @@
     "test": "tests"
   },
   "scripts": {
-    "visreg-test": "percy exec -- nightwatch",
-    "test": "THIS IS THE TEST"
+    "test": "percy exec -- nightwatch"
   },
   "repository": {
     "type": "git",

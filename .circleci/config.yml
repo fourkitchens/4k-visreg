@@ -154,7 +154,7 @@ jobs:
 
       - run:
           name: Run visual regression tests
-          command: npm visreg-test
+          command: npm test
 
 workflows:
   build_and_deploy:
