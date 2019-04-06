@@ -1,0 +1,20 @@
+uuid: 53449cbd-edf0-4f2b-8db2-98e01a7c6260
+langcode: en
+status: true
+dependencies:
+  module:
+    - system
+  theme:
+    - visreg
+id: poweredbydrupal
+theme: visreg
+region: sidebar_first
+weight: -4
+provider: null
+plugin: system_powered_by_block
+settings:
+  id: system_powered_by_block
+  label: 'Powered by Drupal'
+  provider: system
+  label_display: visible
+visibility: {  }
